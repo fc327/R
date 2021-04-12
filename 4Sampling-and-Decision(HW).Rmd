@@ -1,0 +1,123 @@
+---
+title: 'Homework 4: Sampling & Decisions Pt. 2'
+author: "Farahin Choudhury"
+date: "`r Sys.time()`"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+Let's continue our exploration of sampling.
+
+```{r setup}
+# Install packages if necessary. For this assignment, you'll need the moments package which contains the skewness function. Remember, do not write install code in the markdown document, install the packages in the console.    
+    
+
+# When you need to use a function that is not a base R function, you need to load the package in the markdown document. So, to access the skewness function, you shold load the moments package. Just remove the # in the line below to load the moments package.    
+
+library(moments)
+library(dplyr)
+```
+
+
+### Step 1: Write a summarizing function to understand the distribution of a vector 
+```{r}
+# 1. The function, call it ‘printVecInfo’ should take a vector as input 
+# 2. The function should print the following information: 
+
+# a. Mean b. Median c. Min & max d. Standard deviation e. Quantiles (at 0.05 and 0.95) f. Skewness 
+
+printVecInfo<- function(arg){
+  cat(avgvalue <- mean(arg), "\n")
+  cat(mdvalue <- median(arg), "\n")
+  cat(minvalue <- min(arg), "\n")
+  cat(stdv <- sd(arg), "\n")
+  cat(rqt <-quantile(arg, probs = c(0.025, 0.975)), "\n")
+  return(avgvalue)
+}
+
+# 3. Test the function with a vector that has (1,2,3,4,5,6,7,8,9,10,50). 
+# You should see something such as:  
+# [1] "mean: 9.54545454545454"
+# [1] "median: 6" 
+# [1] "min: 1 max: 50" 
+# [1] "sd: 13.7212509368762" 
+# [1] "quantile (0.05 - 0.95): 1.5 -- 30" 
+# [1] "skewness: 2.62039633563579"
+
+printVecInfo(c(1,2,3,4,5,6,7,8,9,10,50))
+
+```
+
+### Step 2: Creating	Samples	in	a	Jar
+```{r}
+# 4. Create a variable ‘jar’ that has 50 red and 50 blue marbles (hint: the jar can have strings as objects, with some of the strings being ‘red’ and some of the strings being ‘blue’ 
+
+marbles <- c("red", "blue")
+jar <- sample(marbles, 100, replace = TRUE)
+jar
+
+# 5. Confirm there are 50 reds by summing the samples that are red 
+
+
+
+# 6. Sample 10 ‘marbles’ (really strings) from the jar. How many are red? What was the percentage of red marbles?
+
+numSample <- 10
+marbsamp <- sample(jar, numSample, replace = TRUE)
+marbsamp
+
+redmarbsamp <- sum(marbsamp == "red")
+redmarbsamp
+
+# 7. Repeat #6, but this time, using the replicate command draw 10 sample sets (i.e., 10 sets of drawing 10 marbles). Compute the mean number of red marbles in these 10 sample sets. Lasty, repeat the above process 20 times to get a list of 20 mean numbers. Use your printVecInfo to see information of the samples. Also generate a histogram of the samples
+
+replicate(10, sample(jar, numSample, replace = TRUE), simplify = TRUE)
+replicate(20, sample(jar, numSample, replace = TRUE), simplify = TRUE)
+
+mean(sample(jar, numSample, replace = TRUE), simplify = TRUE)
+
+printVecInfo(marbsamp == "red")
+
+# 8. Repeat #7, but this time, sample the jar 100 times. You should get 20 numbers, this time each number represents the mean of how many reds there were in the 100 samples. Use your printVecInfo to see information of the samples. Also generate a histogram of the samples. 
+
+newNumSamp <- 100
+samplehundred <- sample(jar, newNumSamp, replace = TRUE)
+mean(samplehundred == "red")
+printVecInfo(samplehundred == "red")
+
+# 9. Repeat #8, but this time, replicate the sampling 100 times. You should get 100 numbers, this time each number represents the mean of how many reds there were in the 100 samples. Use your printVecInfo to see information of the samples. Also generate a histogram of the samples
+
+finalhundred <- replicate(100, sample(jar, numSample, replace = TRUE), simplify = TRUE)
+
+mean(finalhundred == "red")
+
+printVecInfo(finalhundred == "red")
+
+
+```
+
+### Step 3: Explore the airquality dataset
+```{r}
+# 10. Store the ‘airquality’ dataset into a temporary variable 
+
+tempaq <- airquality
+tempaq
+
+# 11. Clean the dataset (i.e. remove the NAs) 
+
+tempaq <- na.omit(tempaq)
+tempaq
+
+# 12. Explore Ozone, Wind and Temp by using the ‘printVecInfo’ function on each measure as well as generating a histogram for each measure
+
+printVecInfo(tempaq$Ozone)
+hist(tempaq$Ozone)
+
+printVecInfo(tempaq$Wind)
+hist(tempaq$Wind)
+
+printVecInfo(tempaq$Temp)
+hist(tempaq$Temp)
+
+```
