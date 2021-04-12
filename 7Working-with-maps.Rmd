@@ -1,0 +1,186 @@
+---
+title: 'Homework 7: Working with Maps'
+author: "Farahin Choudhury"
+date: "`r Sys.time()`"
+output:
+  pdf_document: default
+  word_document: default
+  html_notebook: default
+---
+
+```{r setup, include=FALSE}
+# Install packages if necessary
+#install.packages("~/Downloads/zipcode/", repos = NULL, type = "source")
+library(zipcode)
+library("ggplot2")
+library("ggmap")
+library("readr")
+library("tidyverse")
+library("tmaptools")
+```
+
+
+### Step 1: Load the Data
+Download the dataset from the link below. Its a dataset of the median income by zip code (an excel file) for the United States.
+
+https://www.dropbox.com/s/w40rxdqwconh49j/MedianZIP.xlsx?dl=0 
+
+```{r}
+# 1 Read in the data to R
+
+medianzip <- read.csv("~/Downloads/MedianZip.csv", header = TRUE)
+medianzip <- medianzip[-1,]
+head(medianzip)
+```
+
+### Step 2: Clean up the data
+```{r }
+# 2 remove any info at the front of the file that's not needed. THis will require you to explore the data FYI. You'll need to remove the commas for numbers and conver to numeric (function hints: gsub() and as.numeric() ). Change column names to "zip", "Median","Mean", and "Population"
+
+colnames(medianzip) <- c("Zip", "median", "mean", "Pop")
+str(medianzip)
+
+medianzip$median <- as.numeric(gsub(",","",medianzip$median))
+medianzip$mean <- as.numeric(gsub(",","",medianzip$mean))
+medianzip$Pop <- as.numeric(gsub(",","",medianzip$Pop))
+str(medianzip)
+medianzip <- medianzip[-1,]
+head(medianzip)
+
+# 3 Install and load the "zipcode" package. There is a dataset in zipcode that contains the following information: "zip","city","state","latitude","longitude". See NOTE below
+
+data(zipcode)
+
+# 4 Merge the zipcode dataframe information into one dataframe using the merge() function. FYI you'll need to clean the zipcodes in in the original data by running clean.zipcodes(zips). clean.zipcodes is a function in the zipcode package.
+
+medianzip$Zip <- clean.zipcodes(medianzip$Zip)
+
+mergedzip <- merge(medianzip, zipcode, by.x = "Zip", by.y = "zip")
+mergedzip <- data.frame(mergedzip)
+
+# 5 Remove Hawaii and Alaska from the dataframe you created in #4
+#subset function 
+#store values for HI and AK into vectors and then deleting them from mergedzip
+#using sql commands via the sqldf library 
+library(dplyr)
+
+mainlandmergedzip <- subset(mergedzip, mergedzip$state != "HI" & mergedzip$state != "AK")
+head(mainlandmergedzip)
+
+```
+
+
+Note 2020: The zipcode package was removed from CRAN so you can’t download it directly from there as you would other packages. There are archived versions of packages so you’ll be installing an older version. Here are the three steps:   
+
+1. Download the package files to your desktop. You can access them at this link: http://www.coreybjackson.com/687/Datasets/zipcode_1.0.tar.gz.   
+2. Navigate to where the files downloaded and unzip the file. You should be able to simply click the zip file and its contents will unload in the same directory, but in a folder.   
+3. Navigate back to RStudio and install using this code: `install.packages("~/Downloads/zipcode/", repos = NULL, type="source")`
+    + You’ll want to set the first argument to the location of the file. In my example "~/Downloads/zipcode/" is the location of the file I unzipped in the previous step.
+
+
+### Step 3: Show the income per zip code
+Overlay each zip code as a point on the map, where the color of the ‘dot’ is based on the median income. To make the map look appealing, have the background of the map be black.
+
+
+### Step 3: Show the income & population per state
+```{r}
+# 1 Create a simpler dataframe,with just the average median income and the population for each state (hint: create these seperately using tapply() and then combine them using merge() )
+  
+mainlandmedian <- tapply(mainlandmergedzip$median, mainlandmergedzip$state, mean, na.rm = TRUE)
+mainlandpop <- tapply(mainlandmergedzip$Pop, mainlandmergedzip$state, sum)
+
+
+medianstate <- rownames(mainlandmedian)
+popstate <- rownames(mainlandpop)
+
+newmainlandmedian <- data.frame(medianstate,mainlandmedian)
+newmainlandpop <- data.frame(medianstate,mainlandpop)
+head(newmainlandmedian)
+head(newmainlandpop)
+mainlandmedianpop <- merge(newmainlandmedian, newmainlandpop, 
+                           by.x = "medianstate", by.y = "medianstate")
+head(mainlandmedianpop)
+
+# 2 Add the state abbreviations and the state names as new column, get the state name (not just the abbreviations) and make sure the state names are all lower case. You can get statenames by using calling View(state.name) its a base dataset in R
+
+mainlandmedianpop$statename<- state.name[match(mainlandmedianpop$medianstate, state.abb)]
+data.frame(mainlandmedianpop)
+na.omit(mainlandmedianpop)
+head(mainlandmedianpop)
+
+# 3 Show the U.S. map, representing the color with the average median income of that state
+
+us <- map_data("state")
+mainlandmedianpop$statename <- tolower(mainlandmedianpop$statename)
+
+library(mapproj)
+
+mainlandmap <- ggplot() + 
+  geom_map(data = us, aes(x=long,y=lat, map_id=region), 
+  map = us, color = "black", fill = "white") + coord_map()
+
+latlon <- geocode_OSM(mainlandmedianpop$statename)
+
+mainlandmapincome <- mainlandmap + 
+  geom_map(data = mainlandmedianpop, map = us, 
+           aes(fill= mainlandmedian , map_id= statename),na.rm=TRUE) +
+  ggtitle("Average Median Income") +
+  theme(plot.title = element_text(hjust = 0.5))
+mainlandmapincome
+
+# 4 Show the U.S. map, with color representing the population of the state using the function tolower()
+
+mainlandmappop <- mainlandmap + 
+  geom_map(data = mainlandmedianpop, map = us, 
+           aes(fill= mainlandpop , map_id= statename),na.rm=TRUE) +
+  ggtitle("Population of the Continental US") +
+  theme(plot.title = element_text(hjust = 0.5))
+mainlandmappop
+
+
+```
+
+```{r}
+ 
+```
+
+### Step 4: Show Zip Code Density
+Now generate a different map, one where we can easily see where there are lots of zip codes, and where there are few (using the ‘stat_density2d’ function).
+```{r}
+
+#mainlandzipdensity <- mainlandmap +
+ # geom_density2d(data = mainlandmedianpop, aes(x=latlon$lon, y=latlon$lat)) +
+  #ggtitle("Zip Code Density Map") + coord_map() + 
+  #theme(plot.title = element_text(hjust = 0.5))
+#mainlandzipdensity
+
+mainlandzipdensity <- mainlandmap + 
+  geom_density2d(data = mainlandmergedzip, 
+           aes(x=longitude, y=latitude)) +
+  ggtitle("Zip Code Density Map") + coord_map() +
+  theme(plot.title = element_text(hjust = 0.5))
+mainlandzipdensity
+
+```
+ 
+### Step 5: Zoom in to the region around NYC 
+Repeat steps 3 & 4, but have the map be of the northeast U.S. (centered around New York).
+```{r}
+
+zoomGeo <- geocode_OSM("New York, NY")
+zoomAmount <- 5
+
+zoomGeo$bbox
+
+#xlimit <- c(zoomGeo$bbox[1] - zoomAmount, zoomGeo$bbox[3] + zoomAmount)
+#ylimit <- c(zoomGeo$bbox[2]- zoomAmount, zoomGeo$bbox[4] + zoomAmount)
+
+mainlandmapincome + coord_fixed(xlim = c(zoomGeo$bbox[1], zoomGeo$bbox[3]), ylim = c(zoomGeo$bbox[2], zoomGeo$bbox[4]))
+
+mainlandmappop + coord_fixed(xlim = c(zoomGeo$bbox[1], zoomGeo$bbox[3]), ylim = c(zoomGeo$bbox[2], zoomGeo$bbox[4]))
+
+#library(raster)
+
+```
+
+
